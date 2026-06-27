@@ -1,71 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Workout Timer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Timer</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: white;
-            text-align: center;
-            padding-top: 60px;
-            margin: 0;
-        }
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding-top: 50px;
+    }
 
-        h1 {
-            font-size: 60px;
-            margin-bottom: 10px;
-        }
+    h1 {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
 
-        #status {
-            font-size: 28px;
-            color: #bbbbbb;
-            margin-bottom: 20px;
-        }
+    #status {
+        font-size: 1.5rem;
+        color: #ccc;
+        margin-bottom: 20px;
+    }
 
-        #timer {
-            font-size: 120px;
-            font-weight: bold;
-            margin: 30px 0;
-        }
+    #timer {
+        font-size: 6rem;
+        font-weight: bold;
+        margin: 30px 0;
+    }
 
-        button {
-            padding: 15px 35px;
-            font-size: 22px;
-            margin: 10px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
+    button {
+        padding: 15px 30px;
+        font-size: 1.2rem;
+        margin: 10px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
 
-        #startBtn {
-            background: #28a745;
-            color: white;
-        }
+    #startBtn {
+        background: #28a745;
+        color: white;
+    }
 
-        #pauseBtn {
-            background: #ff9800;
-            color: white;
-        }
-    </style>
+    #pauseBtn {
+        background: #ff9800;
+        color: white;
+    }
+</style>
 </head>
 
 <body>
 
-    <h1 id="exercise">Ready</h1>
-    <div id="status">Press Start</div>
-    <div id="timer">15</div>
+<h1 id="exercise">Ready</h1>
+<div id="status">Press Start</div>
+<div id="timer">15</div>
 
-    <button id="startBtn" onclick="startWorkout()">
-        Start Workout
-    </button>
-
-    <button id="pauseBtn"
-            onclick="togglePause()"
-            disabled>
-        Pause
-    </button>
+<button id="startBtn">Start Workout</button>
+<button id="pauseBtn" disabled>Pause</button>
 
 <script>
 
@@ -88,15 +83,40 @@ const exercises = [
 
 const PREP_TIME = 15;
 const EXERCISE_TIME = 30;
-const REST_TIME = 7;
+const REST_TIME = 10;
 
 let isPaused = false;
+let wakeLock = null;
 
 const exerciseEl = document.getElementById("exercise");
 const statusEl = document.getElementById("status");
 const timerEl = document.getElementById("timer");
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
+
+
+/* ---------- WAKE LOCK ---------- */
+
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log("Wake lock active");
+        }
+    } catch (err) {
+        console.log("Wake lock error:", err);
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+    }
+}
+
+
+/* ---------- HELPERS ---------- */
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -105,18 +125,6 @@ function sleep(ms) {
 async function waitIfPaused() {
     while (isPaused) {
         await sleep(200);
-    }
-}
-
-function togglePause() {
-
-    isPaused = !isPaused;
-
-    if (isPaused) {
-        pauseBtn.innerText = "Resume";
-        statusEl.innerText = "Paused";
-    } else {
-        pauseBtn.innerText = "Pause";
     }
 }
 
@@ -133,26 +141,47 @@ function speak(text) {
         speechSynthesis.speak(utterance);
 
     });
-
 }
 
-async function preparationCountdown(seconds) {
 
-    for(let i = seconds; i >= 1; i--) {
+/* ---------- BUTTONS ---------- */
+
+startBtn.addEventListener("click", startWorkout);
+
+pauseBtn.addEventListener("click", () => {
+
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        pauseBtn.innerText = "Resume";
+        statusEl.innerText = "Paused";
+    } else {
+        pauseBtn.innerText = "Pause";
+    }
+
+});
+
+
+/* ---------- COUNTDOWNS ---------- */
+
+async function preparationCountdown() {
+
+    statusEl.innerText = "Preparation";
+
+    for(let i = PREP_TIME; i >= 1; i--) {
 
         await waitIfPaused();
 
         timerEl.innerText = i;
 
-        if(i === 3) await speak("3");
-        else if(i === 2) await speak("2");
-        else if(i === 1) await speak("1");
+        if(i <= 3)
+            await speak(String(i));
 
         await sleep(1000);
     }
 }
 
-async function exerciseStartCountdown() {
+async function startExerciseCountdown() {
 
     statusEl.innerText = "Get Ready";
 
@@ -165,7 +194,7 @@ async function exerciseStartCountdown() {
     timerEl.innerText = "1";
     await speak("1");
 
-    timerEl.innerText = "GO";
+    timerEl.innerText = "GO!";
     await speak("Start");
 
     await sleep(500);
@@ -184,22 +213,28 @@ async function exerciseCountdown() {
         if(i === 15)
             await speak("Halfway");
 
-        if(i === 3)
-            await speak("3");
-
-        if(i === 2)
-            await speak("2");
-
-        if(i === 1)
-            await speak("1");
+        if(i <= 3)
+            await speak(String(i));
 
         await sleep(1000);
     }
 }
 
-async function restCountdown() {
+async function restCountdown(nextExercise) {
 
-    statusEl.innerText = "Rest";
+    exerciseEl.innerText = "Rest";
+    statusEl.innerText = "Recovery";
+
+    await speak("Rest for 10 seconds");
+
+    // Wait before next announcement so it doesn't overlap
+    await sleep(1500);
+
+    await speak("Next exercise");
+
+    await sleep(500);
+
+    await speak(nextExercise);
 
     for(let i = REST_TIME; i >= 1; i--) {
 
@@ -211,53 +246,56 @@ async function restCountdown() {
     }
 }
 
+
+/* ---------- MAIN WORKOUT ---------- */
+
 async function startWorkout() {
 
     startBtn.disabled = true;
     pauseBtn.disabled = false;
 
+    await requestWakeLock();
+
     exerciseEl.innerText = "Get Ready";
-    statusEl.innerText = "Preparation";
 
     await speak("Workout starts in 15 seconds");
 
-    await speak("First exercise " + exercises[0]);
+    await sleep(1000);
 
-    await preparationCountdown(PREP_TIME);
+    await speak("First exercise");
+
+    await sleep(500);
+
+    await speak(exercises[0]);
+
+    await preparationCountdown();
 
     for(let i = 0; i < exercises.length; i++) {
 
         exerciseEl.innerText = exercises[i];
 
-        await exerciseStartCountdown();
+        await startExerciseCountdown();
 
         await exerciseCountdown();
 
         if(i < exercises.length - 1) {
 
-            exerciseEl.innerText = "Rest";
+            await restCountdown(exercises[i + 1]);
 
-            await speak("Rest for 10 seconds");
-
-            await sleep(1000);
-
-            await speak("Next exercise " + exercises[i + 1]);
-
-            await sleep(1000);
-
-            await restCountdown();
         }
     }
+
+    pauseBtn.disabled = true;
 
     exerciseEl.innerText = "Workout Complete";
     statusEl.innerText = "Finished";
     timerEl.innerText = "✓";
 
-    pauseBtn.disabled = true;
-
     await speak(
-        "Workout complete. Congratulations. You did an amazing job today."
+        "Workout complete. Congratulations. Amazing effort today."
     );
+
+    await releaseWakeLock();
 }
 
 </script>
