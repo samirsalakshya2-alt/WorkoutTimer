@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Timer</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        #status {
+            font-size: 28px;
+            color: #bbbbbb;
+            margin-bottom: 20px;
+        }
+
+        #timer {
+            font-size: 120px;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+
+        .buttons {
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 15px 35px;
+            font-size: 22px;
+            margin: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        #startBtn {
+            background: #28a745;
+            color: white;
+        }
+
+        #pauseBtn {
+            background: #ff9800;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 id="exercise">Ready</h1>
+
+    <div id="status">Press Start</div>
+
+    <div id="timer">15</div>
+
+    <div class="buttons">
+        <button id="startBtn" onclick="startWorkout()">
+            Start Workout
+        </button>
+
+        <button id="pauseBtn"
+                onclick="togglePause()"
+                disabled>
+            Pause
+        </button>
+    </div>
+
+<script>
+
+const exercises = [
+    "Jumping Jacks",
+    "Wall Sit-up",
+    "Push-up",
+    "Crunches",
+    "Step Up on Chair",
+    "Squats",
+    "Triceps Dip",
+    "Plank",
+    "High Jumping",
+    "Lunges",
+    "Push-up and Rotation",
+    "Left Plank",
+    "Right Plank",
+    "Touch Your Toes"
+];
+
+const PREP_TIME = 15;
+const EXERCISE_TIME = 30;
+const REST_TIME = 10;
+
+let isPaused = false;
+
+const compliments = [
+    "Great job!",
+    "Well done!",
+    "Excellent work!",
+    "Keep it up!",
+    "Awesome!",
+    "Fantastic!"
+];
+
+const exerciseEl = document.getElementById("exercise");
+const statusEl = document.getElementById("status");
+const timerEl = document.getElementById("timer");
+
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+
+
+function speak(text) {
+    speechSynthesis.cancel();
+
+    let msg = new SpeechSynthesisUtterance(text);
+    msg.rate = 1;
+    msg.pitch = 1;
+    speechSynthesis.speak(msg);
+}
+
+function congratulate() {
+    let msg =
+        compliments[Math.floor(Math.random() * compliments.length)];
+
+    speak(msg);
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitIfPaused() {
+    while (isPaused) {
+        await sleep(200);
+    }
+}
+
+function togglePause() {
+
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        pauseBtn.innerText = "Resume";
+        statusEl.innerText = "Paused";
+        speak("Workout paused");
+    } else {
+        pauseBtn.innerText = "Pause";
+        speak("Workout resumed");
+    }
+}
+
+async function preparationCountdown(seconds) {
+
+    for (let i = seconds; i >= 1; i--) {
+
+        await waitIfPaused();
+
+        timerEl.innerText = i;
+
+        if (i === 3) speak("3");
+        if (i === 2) speak("2");
+        if (i === 1) speak("1");
+
+        await sleep(1000);
+    }
+}
+
+async function exerciseCountdown(seconds) {
+
+    for (let i = seconds; i >= 1; i--) {
+
+        await waitIfPaused();
+
+        timerEl.innerText = i;
+
+        if (i === 15)
+            speak("Halfway");
+
+        if (i === 3) speak("3");
+        if (i === 2) speak("2");
+        if (i === 1) speak("1");
+
+        await sleep(1000);
+    }
+}
+
+async function restCountdown(seconds) {
+
+    for (let i = seconds; i >= 1; i--) {
+
+        await waitIfPaused();
+
+        timerEl.innerText = i;
+
+        await sleep(1000);
+    }
+}
+
+async function startWorkout() {
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+
+    exerciseEl.innerText = "Get Ready";
+    statusEl.innerText = "Preparation";
+
+    speak("Workout starts in 15 seconds");
+
+    await sleep(2000);
+
+    speak("First exercise " + exercises[0]);
+
+    await preparationCountdown(PREP_TIME);
+
+    for (let i = 0; i < exercises.length; i++) {
+
+        exerciseEl.innerText = exercises[i];
+        statusEl.innerText = "Exercise";
+
+        await exerciseCountdown(EXERCISE_TIME);
+
+        congratulate();
+
+        await sleep(1500);
+
+        if (i < exercises.length - 1) {
+
+            exerciseEl.innerText = "Rest";
+            statusEl.innerText = "Recovery";
+
+            speak("Rest for 10 seconds");
+
+            await sleep(2000);
+
+            speak("Next exercise " + exercises[i + 1]);
+
+            await restCountdown(REST_TIME);
+        }
+    }
+
+    exerciseEl.innerText = "Workout Complete";
+    statusEl.innerText = "Finished";
+    timerEl.innerText = "✓";
+
+    pauseBtn.disabled = true;
+
+    speak("Workout complete. Fantastic effort. You did an amazing job!");
+}
+
+</script>
+
+</body>
+</html>
