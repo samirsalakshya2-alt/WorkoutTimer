@@ -1,8 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workout Timer</title>
 
     <style>
@@ -28,12 +26,8 @@
 
         #timer {
             font-size: 120px;
-            margin: 30px 0;
             font-weight: bold;
-        }
-
-        .buttons {
-            margin-top: 30px;
+            margin: 30px 0;
         }
 
         button {
@@ -60,22 +54,18 @@
 <body>
 
     <h1 id="exercise">Ready</h1>
-
     <div id="status">Press Start</div>
-
     <div id="timer">15</div>
 
-    <div class="buttons">
-        <button id="startBtn" onclick="startWorkout()">
-            Start Workout
-        </button>
+    <button id="startBtn" onclick="startWorkout()">
+        Start Workout
+    </button>
 
-        <button id="pauseBtn"
-                onclick="togglePause()"
-                disabled>
-            Pause
-        </button>
-    </div>
+    <button id="pauseBtn"
+            onclick="togglePause()"
+            disabled>
+        Pause
+    </button>
 
 <script>
 
@@ -102,38 +92,11 @@ const REST_TIME = 10;
 
 let isPaused = false;
 
-const compliments = [
-    "Great job!",
-    "Well done!",
-    "Excellent work!",
-    "Keep it up!",
-    "Awesome!",
-    "Fantastic!"
-];
-
 const exerciseEl = document.getElementById("exercise");
 const statusEl = document.getElementById("status");
 const timerEl = document.getElementById("timer");
-
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
-
-
-function speak(text) {
-    speechSynthesis.cancel();
-
-    let msg = new SpeechSynthesisUtterance(text);
-    msg.rate = 1;
-    msg.pitch = 1;
-    speechSynthesis.speak(msg);
-}
-
-function congratulate() {
-    let msg =
-        compliments[Math.floor(Math.random() * compliments.length)];
-
-    speak(msg);
-}
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -152,51 +115,93 @@ function togglePause() {
     if (isPaused) {
         pauseBtn.innerText = "Resume";
         statusEl.innerText = "Paused";
-        speak("Workout paused");
     } else {
         pauseBtn.innerText = "Pause";
-        speak("Workout resumed");
     }
+}
+
+function speak(text) {
+
+    return new Promise(resolve => {
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1;
+        utterance.pitch = 1;
+
+        utterance.onend = () => resolve();
+
+        speechSynthesis.speak(utterance);
+
+    });
+
 }
 
 async function preparationCountdown(seconds) {
 
-    for (let i = seconds; i >= 1; i--) {
+    for(let i = seconds; i >= 1; i--) {
 
         await waitIfPaused();
 
         timerEl.innerText = i;
 
-        if (i === 3) speak("3");
-        if (i === 2) speak("2");
-        if (i === 1) speak("1");
+        if(i === 3) await speak("3");
+        else if(i === 2) await speak("2");
+        else if(i === 1) await speak("1");
 
         await sleep(1000);
     }
 }
 
-async function exerciseCountdown(seconds) {
+async function exerciseStartCountdown() {
 
-    for (let i = seconds; i >= 1; i--) {
+    statusEl.innerText = "Get Ready";
+
+    timerEl.innerText = "3";
+    await speak("3");
+
+    timerEl.innerText = "2";
+    await speak("2");
+
+    timerEl.innerText = "1";
+    await speak("1");
+
+    timerEl.innerText = "GO";
+    await speak("Start");
+
+    await sleep(500);
+}
+
+async function exerciseCountdown() {
+
+    statusEl.innerText = "Exercise";
+
+    for(let i = EXERCISE_TIME; i >= 1; i--) {
 
         await waitIfPaused();
 
         timerEl.innerText = i;
 
-        if (i === 15)
-            speak("Halfway");
+        if(i === 15)
+            await speak("Halfway");
 
-        if (i === 3) speak("3");
-        if (i === 2) speak("2");
-        if (i === 1) speak("1");
+        if(i === 3)
+            await speak("3");
+
+        if(i === 2)
+            await speak("2");
+
+        if(i === 1)
+            await speak("1");
 
         await sleep(1000);
     }
 }
 
-async function restCountdown(seconds) {
+async function restCountdown() {
 
-    for (let i = seconds; i >= 1; i--) {
+    statusEl.innerText = "Rest";
+
+    for(let i = REST_TIME; i >= 1; i--) {
 
         await waitIfPaused();
 
@@ -214,37 +219,33 @@ async function startWorkout() {
     exerciseEl.innerText = "Get Ready";
     statusEl.innerText = "Preparation";
 
-    speak("Workout starts in 15 seconds");
+    await speak("Workout starts in 15 seconds");
 
-    await sleep(2000);
-
-    speak("First exercise " + exercises[0]);
+    await speak("First exercise " + exercises[0]);
 
     await preparationCountdown(PREP_TIME);
 
-    for (let i = 0; i < exercises.length; i++) {
+    for(let i = 0; i < exercises.length; i++) {
 
         exerciseEl.innerText = exercises[i];
-        statusEl.innerText = "Exercise";
 
-        await exerciseCountdown(EXERCISE_TIME);
+        await exerciseStartCountdown();
 
-        congratulate();
+        await exerciseCountdown();
 
-        await sleep(1500);
-
-        if (i < exercises.length - 1) {
+        if(i < exercises.length - 1) {
 
             exerciseEl.innerText = "Rest";
-            statusEl.innerText = "Recovery";
 
-            speak("Rest for 10 seconds");
+            await speak("Rest for 10 seconds");
 
-            await sleep(2000);
+            await sleep(1000);
 
-            speak("Next exercise " + exercises[i + 1]);
+            await speak("Next exercise " + exercises[i + 1]);
 
-            await restCountdown(REST_TIME);
+            await sleep(1000);
+
+            await restCountdown();
         }
     }
 
@@ -254,7 +255,9 @@ async function startWorkout() {
 
     pauseBtn.disabled = true;
 
-    speak("Workout complete. Fantastic effort. You did an amazing job!");
+    await speak(
+        "Workout complete. Congratulations. You did an amazing job today."
+    );
 }
 
 </script>
